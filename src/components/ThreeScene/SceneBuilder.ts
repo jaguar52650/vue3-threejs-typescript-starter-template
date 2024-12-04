@@ -1,83 +1,124 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { toRaw } from 'vue';
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { toRaw } from "vue";
+//https://holomorphicguy.hashnode.dev/using-threejs-with-vue3-and-typescript
 
+export default class SceneBuilder {
+  root: HTMLElement;
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+  controls: OrbitControls;
+  material: THREE.MeshNormalMaterial;
+  directionalLight;
 
-export default class SceneBuilder{
-    root: HTMLElement
-    scene: THREE.Scene
-    camera: THREE.PerspectiveCamera
-    renderer: THREE.WebGLRenderer
-    controls: OrbitControls
-    material: THREE.MeshNormalMaterial
-    directionalLight
-   
-    constructor(root: HTMLElement){
-        this.root = root;
-        this.scene = new THREE.Scene(),
-        
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        
-        this.renderer.setSize( 540, 640 );
-        this.renderer.setPixelRatio(window.devicePixelRatio)
-        this.scene.background = new THREE.Color( 0x5555555);
-        this.cameraSetup();
+  constructor(root: HTMLElement) {
+    this.root = root;
+    (this.scene = new THREE.Scene()),
+      (this.renderer = new THREE.WebGLRenderer({ antialias: true }));
 
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.scene.background = new THREE.Color(0x5555555);
+    this.scene.background = new THREE.Color(0x0000000);
+    this.cameraSetup();
 
-        this.controls = new OrbitControls( this.camera, this.renderer.domElement );
-        this.draw()
-        this.root.appendChild( this.renderer.domElement );
-    }
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.draw();
+    this.root.appendChild(this.renderer.domElement);
+  }
 
-    cameraSetup (){
-        
-        this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-        
-        this.camera.position.set( -20, 10, 20 );
-        this.camera.lookAt(0,0,0)
-    }
+  cameraSetup() {
+    this.camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
 
-    draw () {
-        // LINE
-        
-        this.material = new THREE.LineBasicMaterial( { color: 0xffffff } );
- 
+    this.camera.position.set(2, 2, 2);
+    this.camera.lookAt(0, 1, 0);
+  }
 
-        // GRID
-        const gridHelper = new THREE.GridHelper( 500, 50 );
-        this.scene.add( gridHelper );
+  draw() {
+    // LINE
 
-        //AXES
-        const axesHelper = new THREE.AxesHelper( 5 );
-        this.scene.add( axesHelper );
+    this.material = new THREE.LineBasicMaterial({ color: 0xffffff });
 
-        //LIGHTS
-        var light = new THREE.Light(  0xFFFFFF, 10, 100 );
-        light.position.set( 10, 10, 10 );
-        this.scene.add( light );
+    // GRID
+    const gridHelper = new THREE.GridHelper(500, 50);
+    this.scene.add(gridHelper);
 
-        this.light = new THREE.AmbientLight( 0xaaaaaa)
-        this.scene.add( this.light );
-        
+    //AXES
+    const axesHelper = new THREE.AxesHelper(5);
+    this.scene.add(axesHelper);
 
-        //threejs create box
-        let box = new THREE.BoxGeometry( 1, 1, 1 );
-        let material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-        let cube = new THREE.Mesh( box, material );
-        cube.position.set(0, -6, -6)
-        this.scene.add( cube );
-}
+    //LIGHTS
+    var light = new THREE.Light(0xffffff, 10, 100);
+    light.position.set(10, 10, 10);
+    this.scene.add(light);
 
+    this.light = new THREE.AmbientLight(0xaaaaaa);
+    this.scene.add(this.light);
 
-    render = () => {
-        requestAnimationFrame( this.render );
-        this.renderer.render(toRaw(this.scene), this.camera)
-        this.controls.update();
+    //threejs create box
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(
+      "https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_1.webp?t=1712655854"
+      //"https://threejs.org/manual/examples/resources/images/wall.jpg"
+    );
+    //https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_4.webp?t=1712655857
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+    });
 
-        
-       
-    }
+    let box = new THREE.BoxGeometry(0.01, 2, 1); // ,в,
+    //let material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    let cube = new THREE.Mesh(box, material);
+    cube.position.set(0.5, 1, -0.5);
+    //this.scene.add(cube);
 
+    this.addProduct(
+      "https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_1.webp?t=1712655854",
+      "https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_4.webp?t=1712655857",
+      0
+    );
+    this.addProduct(
+      "https://imgcdn.zarina.ru/upload/images/44221/thumb/900_9999/4422142332_33_1.webp?t=1732025102",
+      "https://imgcdn.zarina.ru/upload/images/44221/thumb/900_9999/4422142332_33_5.webp?t=1732025102",
+      1
+    );
+  }
+  addProduct = (front, back, index) => {
+    const loadManager = new THREE.LoadingManager();
+    const loader = new THREE.TextureLoader(loadManager);
+    const materials = [
+      null,
+      null,
+      null,
+      null,
+      new THREE.MeshBasicMaterial({
+        map: loader.load(front),
+      }),
+      new THREE.MeshBasicMaterial({
+        map: loader.load(back),
+      }),
+    ];
+    let width = 1;
+    let height = (width / 3) * 4;
+    let geometry = new THREE.BoxGeometry(width, height, 0.01); // ,в,
+    loadManager.onLoad = () => {
+      const cube = new THREE.Mesh(geometry, materials);
+      cube.position.set(0.5 + index * width * 1.5, 1, -0.5);
+      this.scene.add(cube);
+    };
+  };
 
+  render = () => {
+    requestAnimationFrame(this.render);
+    this.renderer.render(toRaw(this.scene), this.camera);
+    this.controls.update();
+  };
 }
