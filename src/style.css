@@ -78,3 +78,15 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+.reload {
+  color: #555555;
+  background: transparent;
+  margin: 0 auto;
+  height: 20px;
+  margin-bottom: -20px;
+  top: 0px;
+  position: fixed;
+  z-index: 999;
+}
+#three-sketch {
+}
