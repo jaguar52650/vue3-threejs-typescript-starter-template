@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "camera-controls": "^2.9.0",
+    "gsap": "^3.12.5",
     "sass": "^1.58.2",
     "three": "^0.149.0",
     "vue": "^3.2.45"

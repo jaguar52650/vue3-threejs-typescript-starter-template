@@ -4,6 +4,10 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { toRaw } from "vue";
 //https://holomorphicguy.hashnode.dev/using-threejs-with-vue3-and-typescript
 import theCategories from "./categories.json";
+import CameraControls from "camera-controls";
+import gsap from "gsap";
+
+CameraControls.install({ THREE: THREE });
 
 export default class SceneBuilder {
   root: HTMLElement;
@@ -13,11 +17,23 @@ export default class SceneBuilder {
   controls: OrbitControls;
   material: THREE.MeshNormalMaterial;
   directionalLight;
+  cameraControls;
+  clock;
 
   constructor(root: HTMLElement) {
+    this.clock = new THREE.Clock();
     this.root = root;
-    (this.scene = new THREE.Scene()),
-      (this.renderer = new THREE.WebGLRenderer({ antialias: true }));
+    this.scene = new THREE.Scene();
+
+    // this.camera = new THREE.PerspectiveCamera(
+    //   60,
+    //   window.innerWidth / window.innerHeight,
+    //   0.01,
+    //   1000
+    // );
+    // this.camera.position.set(0, 0, 5);
+
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
 
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -25,9 +41,30 @@ export default class SceneBuilder {
     this.scene.background = new THREE.Color(0x0000000);
     this.cameraSetup();
 
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    //this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+
     this.draw();
     this.root.appendChild(this.renderer.domElement);
+
+    this.cameraControls = new CameraControls(
+      this.camera,
+      this.renderer.domElement
+    );
+    this.cameraControls.truck(0.1, 0, false);
+    const tween = gsap.fromTo(
+      this.cameraControls,
+      {
+        azimuthAngle: 0,
+      },
+      {
+        azimuthAngle: 120 * THREE.MathUtils.DEG2RAD,
+        duration: 3,
+        paused: true,
+      }
+    );
+
+    //this.cameraControls.enabled = false;
+    tween.play(0);
   }
 
   cameraSetup() {
@@ -103,6 +140,7 @@ export default class SceneBuilder {
       );
       //gridHelper2.addObject(object);
     }
+    gridHelper2.position.y = -1;
     this.scene.add(gridHelper2);
     this.drawFloor(701);
   }
@@ -135,14 +173,12 @@ export default class SceneBuilder {
     let level = this.getLevel(category, theCategories);
     console.log(level);
     let index = 0;
-    for (let i in level.subs) {
-      if (level.subs[i].picture_bar) {
-        this.addProduct(
-          level.subs[i].picture_bar_img,
-          level.subs[i].picture_bar_img,
-          index++
-        );
-      }
+    const subs = level.subs.filter((item) => item.picture_bar);
+    let pos = Math.floor(subs.length / -2);
+    for (let i in subs) {
+      this.addProduct(subs[i].picture_bar_img, subs[i].picture_bar_img, pos);
+      index++;
+      pos++;
     }
   };
   getLevel = (categoryId, levels) => {
@@ -159,8 +195,27 @@ export default class SceneBuilder {
   };
 
   render = () => {
+    // requestAnimationFrame(this.render);
+    //this.renderer.render(toRaw(this.scene), this.camera);
+    //this.controls.update();
+
+    // snip
+    const delta = this.clock.getDelta();
+    const hasControlsUpdated = this.cameraControls.update(delta);
+
     requestAnimationFrame(this.render);
-    this.renderer.render(toRaw(this.scene), this.camera);
-    this.controls.update();
+
+    // you can skip this condition to render though
+    if (hasControlsUpdated) {
+      //console.log(delta);
+      //this.cameraControls.truck(0.1 * delta, 0, false);
+      // this.cameraControls.rotate(
+      //   -10 * THREE.MathUtils.DEG2RAD * delta,
+      //   0,
+      //   true
+      // );
+      //console.log("hasControlsUpdated");
+      this.renderer.render(toRaw(this.scene), this.camera);
+    }
   };
 }
