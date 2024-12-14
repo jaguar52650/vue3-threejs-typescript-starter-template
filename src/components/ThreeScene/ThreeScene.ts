@@ -12,9 +12,6 @@ export default defineComponent({
   },
   data() {
     return {
-      sketch: null,
-      description: null,
-      width: 540,
       rendered: false,
     };
   },
@@ -24,7 +21,6 @@ export default defineComponent({
       this.scene.camera.aspect = window.innerWidth / window.innerHeight;
       this.scene.camera.updateProjectionMatrix();
       this.scene.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.updateWindowWidth();
     },
   },
   mounted() {

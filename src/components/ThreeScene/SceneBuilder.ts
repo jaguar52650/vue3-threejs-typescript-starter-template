@@ -6,8 +6,20 @@ import { toRaw } from "vue";
 import theCategories from "./categories.json";
 import CameraControls from "camera-controls";
 import gsap from "gsap";
+import * as holdEvent from "hold-event";
+//import * as holdEvent from "hold-event";
 
 CameraControls.install({ THREE: THREE });
+
+//https://github.com/yomotsu/hold-event/blob/master/src/KeyboardKeyHold.ts
+const keyW = new holdEvent.KeyboardKeyHold("KeyW");
+const keyS = new holdEvent.KeyboardKeyHold("KeyS");
+const keyA = new holdEvent.KeyboardKeyHold("KeyA");
+const keyD = new holdEvent.KeyboardKeyHold("KeyD");
+const ArrowUp = new holdEvent.KeyboardKeyHold("ArrowUp");
+const ArrowDown = new holdEvent.KeyboardKeyHold("ArrowDown");
+const ArrowLeft = new holdEvent.KeyboardKeyHold("ArrowLeft");
+const ArrowRight = new holdEvent.KeyboardKeyHold("ArrowRight");
 
 export default class SceneBuilder {
   root: HTMLElement;
@@ -24,17 +36,7 @@ export default class SceneBuilder {
     this.clock = new THREE.Clock();
     this.root = root;
     this.scene = new THREE.Scene();
-
-    // this.camera = new THREE.PerspectiveCamera(
-    //   60,
-    //   window.innerWidth / window.innerHeight,
-    //   0.01,
-    //   1000
-    // );
-    // this.camera.position.set(0, 0, 5);
-
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.scene.background = new THREE.Color(0x5555555);
@@ -50,14 +52,14 @@ export default class SceneBuilder {
       this.camera,
       this.renderer.domElement
     );
-    this.cameraControls.truck(0.1, 0, false);
+    //this.cameraControls.truck(0.1, 0, false);
     const tween = gsap.fromTo(
       this.cameraControls,
       {
         azimuthAngle: 0,
       },
       {
-        azimuthAngle: 120 * THREE.MathUtils.DEG2RAD,
+        azimuthAngle: 180 * THREE.MathUtils.DEG2RAD,
         duration: 3,
         paused: true,
       }
@@ -65,6 +67,38 @@ export default class SceneBuilder {
 
     //this.cameraControls.enabled = false;
     tween.play(0);
+    keyW.addEventListener("holding", (event) => {
+      this.cameraControls.forward(0.01 * event.deltaTime, false);
+    });
+    keyS.addEventListener("holding", (event) =>
+      this.cameraControls.forward(-0.01 * event.deltaTime, false)
+    );
+    keyA.addEventListener("holding", (event) => {
+      this.cameraControls.truck(-0.01 * event.deltaTime, 0, false);
+    });
+    keyD.addEventListener("holding", (event) => {
+      this.cameraControls.truck(0.01 * event.deltaTime, 0, false);
+    });
+    ArrowUp.addEventListener("holding", (event) => {
+      this.cameraControls.forward(0.005 * event.deltaTime, false);
+    });
+    ArrowDown.addEventListener("holding", (event) =>
+      this.cameraControls.forward(-0.005 * event.deltaTime, false)
+    );
+    ArrowLeft.addEventListener("holding", (event) => {
+      this.cameraControls.rotate(
+        0.05 * THREE.MathUtils.DEG2RAD * event.deltaTime,
+        0,
+        true
+      );
+    });
+    ArrowRight.addEventListener("holding", (event) => {
+      this.cameraControls.rotate(
+        -0.05 * THREE.MathUtils.DEG2RAD * event.deltaTime,
+        0,
+        true
+      );
+    });
   }
 
   cameraSetup() {
@@ -75,8 +109,8 @@ export default class SceneBuilder {
       1000
     );
 
-    this.camera.position.set(2, 2, 2);
-    this.camera.lookAt(0, 1, 0);
+    this.camera.position.set(2, 0, 2);
+    this.camera.lookAt(0, 2, 0);
   }
 
   draw() {
@@ -100,35 +134,6 @@ export default class SceneBuilder {
     this.light = new THREE.AmbientLight(0xaaaaaa);
     this.scene.add(this.light);
 
-    //threejs create box
-    const loader = new THREE.TextureLoader();
-    const texture = loader.load(
-      "https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_1.webp?t=1712655854"
-      //"https://threejs.org/manual/examples/resources/images/wall.jpg"
-    );
-    //https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_4.webp?t=1712655857
-    texture.colorSpace = THREE.SRGBColorSpace;
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-    });
-
-    let box = new THREE.BoxGeometry(0.01, 2, 1); // ,в,
-    //let material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    let cube = new THREE.Mesh(box, material);
-    cube.position.set(0.5, 1, -0.5);
-    //this.scene.add(cube);
-
-    // this.addProduct(
-    //   "https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_1.webp?t=1712655854",
-    //   "https://imgcdn.zarina.ru/upload/images/42250/thumb/900_9999/4225070571_153_4.webp?t=1712655857",
-    //   0
-    // );
-    // this.addProduct(
-    //   "https://imgcdn.zarina.ru/upload/images/44221/thumb/900_9999/4422142332_33_1.webp?t=1732025102",
-    //   "https://imgcdn.zarina.ru/upload/images/44221/thumb/900_9999/4422142332_33_5.webp?t=1732025102",
-    //   1
-    // );
-
     // Create a GridHelper
     let gridHelper2 = new THREE.GridHelper(20, 20, 0x555555, 0x555555, 10, 10);
 
@@ -144,56 +149,6 @@ export default class SceneBuilder {
     this.scene.add(gridHelper2);
     this.drawFloor(701);
   }
-  addProduct = (front, back, index) => {
-    const loadManager = new THREE.LoadingManager();
-    const loader = new THREE.TextureLoader(loadManager);
-    const materials = [
-      null,
-      null,
-      null,
-      null,
-      new THREE.MeshBasicMaterial({
-        map: loader.load(front),
-      }),
-      new THREE.MeshBasicMaterial({
-        map: loader.load(back),
-      }),
-    ];
-    let width = 1;
-    let height = (width / 3) * 4;
-    let geometry = new THREE.BoxGeometry(width, height, 0.01); // ,в,
-    loadManager.onLoad = () => {
-      const cube = new THREE.Mesh(geometry, materials);
-      cube.position.set(0.5 + index * width * 1.5, 1, -0.5);
-      this.scene.add(cube);
-    };
-  };
-
-  drawFloor = (category) => {
-    let level = this.getLevel(category, theCategories);
-    console.log(level);
-    let index = 0;
-    const subs = level.subs.filter((item) => item.picture_bar);
-    let pos = Math.floor(subs.length / -2);
-    for (let i in subs) {
-      this.addProduct(subs[i].picture_bar_img, subs[i].picture_bar_img, pos);
-      index++;
-      pos++;
-    }
-  };
-  getLevel = (categoryId, levels) => {
-    for (let i in levels) {
-      if (levels[i].id == categoryId) {
-        return levels[i];
-      } else if (levels[i].subs.length) {
-        let res = this.getLevel(categoryId, levels[i].subs);
-        if (res) {
-          return res;
-        }
-      }
-    }
-  };
-
   render = () => {
     // requestAnimationFrame(this.render);
     //this.renderer.render(toRaw(this.scene), this.camera);
@@ -216,6 +171,71 @@ export default class SceneBuilder {
       // );
       //console.log("hasControlsUpdated");
       this.renderer.render(toRaw(this.scene), this.camera);
+    }
+  };
+
+  addProduct = (front, back, index) => {
+    const loadManager = new THREE.LoadingManager();
+    const loader = new THREE.TextureLoader(loadManager);
+    let materials = [
+      null,
+      null,
+      null,
+      null,
+      new THREE.MeshBasicMaterial({
+        map: loader.load(front),
+      }),
+      new THREE.MeshBasicMaterial({
+        map: loader.load(back),
+      }),
+    ];
+    // materials = new THREE.MeshBasicMaterial({
+    //   color: 0x00ff00,
+    //   vertexColors: THREE.FaceColors,
+    // });
+    console.log(index);
+    let width = 1;
+    let height = (width / 3) * 4;
+    let geometry = new THREE.BoxGeometry(width, height, 0.01); // ,в,
+    const r = 5;
+    const angle = index * (360 / 12) * THREE.MathUtils.DEG2RAD;
+    console.log(angle);
+    loadManager.onLoad = () => {
+      const cube = new THREE.Mesh(geometry, materials);
+
+      let x = r * Math.cos(angle);
+      let y = r * Math.sin(angle);
+      cube.position.set(x, 0, y);
+      //cube.position.set(index * width * 1.5, 0, -0.5 );
+      cube.rotation.y = -angle + 90 * THREE.MathUtils.DEG2RAD;
+
+      this.scene.add(cube);
+    };
+  };
+
+  drawFloor = (category) => {
+    let level = this.getLevel(category, theCategories);
+    //console.log(level);
+    let index = 0;
+    const subs = level.subs.filter((item) => item.picture_bar).slice(0, 12);
+    let pos = 0;
+    Math.floor(subs.length / -2);
+    for (let i in subs) {
+      this.addProduct(subs[i].picture_bar_img, subs[i].picture_bar_img, pos);
+      index++;
+      pos++;
+    }
+  };
+  getLevel = (categoryId, levels) => {
+    for (let i in levels) {
+      if (levels[i].id == categoryId) {
+        return levels[i];
+      } else if (levels[i].subs.length) {
+        let res = this.getLevel(categoryId, levels[i].subs);
+        if (res) {
+          return res;
+        }
+      }
     }
   };
 }
