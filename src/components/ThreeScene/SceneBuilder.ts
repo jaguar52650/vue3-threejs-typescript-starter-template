@@ -7,8 +7,8 @@ import theCategories from "./categories.json";
 import CameraControls from "camera-controls";
 import gsap from "gsap";
 import * as holdEvent from "hold-event";
-//import * as holdEvent from "hold-event";
-
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
+import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry";
 CameraControls.install({ THREE: THREE });
 
 //https://github.com/yomotsu/hold-event/blob/master/src/KeyboardKeyHold.ts
@@ -31,6 +31,7 @@ export default class SceneBuilder {
   directionalLight;
   cameraControls;
   clock;
+  raycaster;
 
   constructor(root: HTMLElement) {
     this.clock = new THREE.Clock();
@@ -60,13 +61,13 @@ export default class SceneBuilder {
       },
       {
         azimuthAngle: 180 * THREE.MathUtils.DEG2RAD,
-        duration: 3,
+        duration: 10,
         paused: true,
       }
     );
 
     //this.cameraControls.enabled = false;
-    tween.play(0);
+
     keyW.addEventListener("holding", (event) => {
       this.cameraControls.forward(0.01 * event.deltaTime, false);
     });
@@ -99,6 +100,10 @@ export default class SceneBuilder {
         true
       );
     });
+
+    this.raycaster = new THREE.Raycaster();
+
+    tween.play(0);
   }
 
   cameraSetup() {
@@ -109,8 +114,8 @@ export default class SceneBuilder {
       1000
     );
 
-    this.camera.position.set(2, 0, 2);
-    this.camera.lookAt(0, 2, 0);
+    this.camera.position.set(35, 4, 35);
+    this.camera.lookAt(0, 1, 0);
   }
 
   draw() {
@@ -135,7 +140,7 @@ export default class SceneBuilder {
     this.scene.add(this.light);
 
     // Create a GridHelper
-    let gridHelper2 = new THREE.GridHelper(20, 20, 0x555555, 0x555555, 10, 10);
+    let gridHelper2 = new THREE.GridHelper(60, 60, 0x555555, 0x555555, 10, 10);
 
     // Add objects to the grid
     for (let i = 0; i < 100; i++) {
@@ -148,6 +153,7 @@ export default class SceneBuilder {
     gridHelper2.position.y = -1;
     this.scene.add(gridHelper2);
     this.drawFloor(701);
+    //this.drawFloor(259);
   }
   render = () => {
     // requestAnimationFrame(this.render);
@@ -171,57 +177,129 @@ export default class SceneBuilder {
       // );
       //console.log("hasControlsUpdated");
       this.renderer.render(toRaw(this.scene), this.camera);
+      // const intersects = this.raycaster.intersectObjects(this.scene.children);
+
+      // for (let i = 0; i < intersects.length; i++) {
+      //   //console.log(intersects[i]);
+      // }
     }
   };
 
-  addProduct = (front, back, index) => {
+  addProduct = (front, back, index, count, name) => {
+    const group = new THREE.Group();
+
     const loadManager = new THREE.LoadingManager();
     const loader = new THREE.TextureLoader(loadManager);
-    let materials = [
-      null,
-      null,
-      null,
-      null,
-      new THREE.MeshBasicMaterial({
-        map: loader.load(front),
-      }),
-      new THREE.MeshBasicMaterial({
-        map: loader.load(back),
-      }),
-    ];
+
     // materials = new THREE.MeshBasicMaterial({
     //   color: 0x00ff00,
     //   vertexColors: THREE.FaceColors,
     // });
-    console.log(index);
-    let width = 1;
+    //console.log(index);
+    const groupsAngle = 360;
+    let width = 3;
     let height = (width / 3) * 4;
     let geometry = new THREE.BoxGeometry(width, height, 0.01); // ,в,
-    const r = 5;
-    const angle = index * (360 / 12) * THREE.MathUtils.DEG2RAD;
-    console.log(angle);
-    loadManager.onLoad = () => {
-      const cube = new THREE.Mesh(geometry, materials);
+    const r = 30;
+    const angle = index * (groupsAngle / count) * THREE.MathUtils.DEG2RAD;
+    //console.log(angle);
 
-      let x = r * Math.cos(angle);
-      let y = r * Math.sin(angle);
-      cube.position.set(x, 0, y);
-      //cube.position.set(index * width * 1.5, 0, -0.5 );
-      cube.rotation.y = -angle + 90 * THREE.MathUtils.DEG2RAD;
+    let x = r * Math.cos(angle);
+    let y = r * Math.sin(angle);
+    group.position.set(x, height, y);
+    //group.position.set(index * width * 1.5, 0, -0.5 );
+    group.rotation.y = -angle + (groupsAngle / 4) * THREE.MathUtils.DEG2RAD;
 
-      this.scene.add(cube);
-    };
+    if (front != "https://imgcdn.zarina.ru") {
+      let materials = [
+        null,
+        null,
+        null,
+        null,
+        new THREE.MeshBasicMaterial({
+          map: loader.load(front),
+        }),
+        new THREE.MeshBasicMaterial({
+          map: loader.load(back),
+        }),
+      ];
+
+      loadManager.onLoad = () => {
+        const cube = new THREE.Mesh(geometry, materials);
+        cube.position.y = 2.5;
+        group.add(cube);
+      };
+    }
+
+    //https://www.educative.io/answers/how-to-create-text-in-threejs
+    // custom font see
+    //font convertr
+    //gero3.github.io/facetype.js/
+    const fontLoader = new FontLoader();
+    fontLoader.load(
+      // path to the font (included in three)
+      "node_modules/three/examples/fonts/droid/droid_serif_regular.typeface.json",
+      // called when the font has loaded
+      (droidFont) => {
+        const settings = {
+          size: 1,
+          height: 0.02,
+          font: droidFont,
+        };
+
+        const textGeometry = new TextGeometry(name, settings);
+        //const textMaterial = new THREE.MeshNormalMaterial();
+        const textMaterial = new THREE.MeshBasicMaterial({
+          color: 0xb9b9b9,
+          vertexColors: THREE.FaceColors,
+        });
+
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        //textMesh.geometry.x = 0.1;
+        textMesh.scale.set(0.3, 0.3, 0.3);
+        // Create a bounding box
+        var box = new THREE.Box3().setFromObject(textMesh);
+        // Get the size
+        var size = new THREE.Vector3();
+        box.getSize(size);
+        //console.log(size);
+
+        textMesh.position.x = size.x / -2;
+        textMesh.position.y = 5; //высота
+        textMesh.position.z = 0.5;
+
+        group.add(textMesh);
+      }
+    );
+
+    let geometryS = new THREE.BoxGeometry(width, width * 4.5, 0.01); // ,в,
+    let material = new THREE.MeshBasicMaterial({
+      color: 0x185a7e,
+      vertexColors: THREE.FaceColors,
+    });
+    const mesh = new THREE.Mesh(geometryS, material);
+    mesh.rotation.x = -55 * THREE.MathUtils.DEG2RAD;
+    mesh.position.y = 0; //  высота
+    mesh.position.z = -5.5; //к центру круга
+    group.add(mesh);
+    this.scene.add(group);
   };
 
   drawFloor = (category) => {
     let level = this.getLevel(category, theCategories);
-    //console.log(level);
+    console.log(level);
     let index = 0;
-    const subs = level.subs.filter((item) => item.picture_bar).slice(0, 12);
+    const subs = level.subs; //.filter((item) => item.picture_bar); //.slice(0, 12);
     let pos = 0;
     Math.floor(subs.length / -2);
     for (let i in subs) {
-      this.addProduct(subs[i].picture_bar_img, subs[i].picture_bar_img, pos);
+      this.addProduct(
+        subs[i].picture_bar_img,
+        subs[i].picture_bar_img,
+        pos,
+        subs.length,
+        subs[i].name
+      );
       index++;
       pos++;
     }
