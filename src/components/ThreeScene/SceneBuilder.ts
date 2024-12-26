@@ -8,7 +8,11 @@ import CameraControls from "camera-controls";
 import gsap from "gsap";
 import * as holdEvent from "hold-event";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry";
+import GUI from "lil-gui";
+//import Stats from "three/examples/jsm/libs/stats.module"; //https://sbcode.net/threejs/multi-controls-example/
 CameraControls.install({ THREE: THREE });
 
 //https://github.com/yomotsu/hold-event/blob/master/src/KeyboardKeyHold.ts
@@ -32,7 +36,9 @@ export default class SceneBuilder {
   cameraControls;
   clock;
   raycaster;
-
+  mesh;
+  params;
+  elevator;
   constructor(root: HTMLElement) {
     this.clock = new THREE.Clock();
     this.root = root;
@@ -103,7 +109,7 @@ export default class SceneBuilder {
 
     this.raycaster = new THREE.Raycaster();
 
-    tween.play(0);
+    //tween.play(0);
   }
 
   cameraSetup() {
@@ -155,6 +161,195 @@ export default class SceneBuilder {
     this.drawFloor(701);
     //this.drawFloor(259);
   }
+  drawElevator() {
+    const loaderGltf = new GLTFLoader();
+    loaderGltf.load("/models/stairs__railings.glb", (gltf) => {
+      // https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7
+      this.elevator = new THREE.Group();
+      //console.log(gltf.scene.children[0].children[0].children[0]);
+      //this.scene.add(gltf.scene.children[0]);
+      // let mesh = gltf.scene.children[0].children[0].children[0];
+      //console.log(gltf.scene.children[0].children);
+
+      let materialWhite = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+      });
+      // 02, 12, 36,
+      //index 0 ,10, 34
+      let objs = [0, 10, 34];
+      objs.forEach((index) => {
+        let geometry =
+          gltf.scene.children[0].children[0].children[index].geometry;
+        let mesh = new THREE.Mesh(geometry, materialWhite);
+        console.log(geometry);
+        this.elevator.add(mesh);
+      });
+
+      let geometry = gltf.scene.children[0].children[0].children[0].geometry;
+
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x0080c0,
+        blendColor: 0x0080c0,
+        opacity: 0.1,
+        blending: 1,
+        blendEquation: 100,
+        blendSrc: 204,
+        blendDst: 205,
+        alphaToCoverage: false,
+        transparent: true,
+        roughnes: 1,
+        toneMapped: true,
+        vertexColors: false,
+        emissive: 0x000000,
+      });
+      this.mesh = new THREE.Mesh(geometry, material);
+
+      this.elevator.add(this.mesh);
+
+      // var box = new THREE.Box3().setFromObject(this.mesh);
+      // var size = new THREE.Vector3();
+      // box.getSize(size);
+      // console.log(size);
+      // mesh.position.x -= size.x / 2;
+      // mesh.position.y -= size.y / 2; //высота
+      // mesh.position.z -= size.z / 2;
+
+      this.scene.add(this.elevator);
+
+      this.elevator.position.x = this.params.x;
+      this.elevator.position.y = 10; //высота
+      this.elevator.position.z = this.params.z - 50;
+    });
+
+    // const objLoader = new OBJLoader();
+    // objLoader.load("/models/STAIRS_AND_RAILINGS.obj", (root) => {
+    //   console.log(root);
+    //   // this.scene.add(root.scene.children[0].children[0].children);
+    // });
+
+    //this.addWord();
+
+    //this.mesh.morphTargetInfluences[0] = 0;
+    this.initGUI();
+  }
+  initGUI = () => {
+    // Set up dat.GUI to control targets
+    this.params = {
+      Spherify: 0,
+      x: 239,
+      y: 0,
+      z: -696 + 28,
+    };
+    const gui = new GUI({ title: "Morph Targets" });
+
+    gui
+      .add(this.params, "Spherify", 0, 1)
+      .step(0.01)
+      .onChange((value) => {
+        this.mesh.morphTargetInfluences[0] = value;
+      });
+
+    gui
+      .add(this.params, "x", -100, 100)
+      .step(1)
+      .onChange((value) => {
+        //this.x = value;
+        this.mesh.position.x = 239 + value;
+      });
+    gui
+      .add(this.params, "z", -100, 100)
+      .step(1)
+      .onChange((value) => {
+        //this.z = value;
+        this.mesh.position.z = -696 + 28 + value;
+      });
+  };
+  addWord = () => {
+    const geometry = this.createGeometry().then((geometry) => {
+      const material = new THREE.MeshPhongMaterial({
+        color: 0xff0000,
+        flatShading: true,
+      });
+
+      this.mesh = new THREE.Mesh(geometry, material);
+      var box = new THREE.Box3().setFromObject(this.mesh);
+      var size = new THREE.Vector3();
+      box.getSize(size);
+      // console.log(size);
+      this.scene.add(this.mesh);
+      // this.mesh.position.x -= size.x / 2;
+      // this.mesh.position.y -= size.y / 2; //высота
+      // this.mesh.position.z -= size.z / 2;
+      this.mesh.position.y = 2;
+    });
+  };
+  createGeometry = () => {
+    var promise = new Promise(function (resolve, reject) {
+      let geometry;
+      geometry = new THREE.BoxGeometry(2, 2, 2, 32, 32, 32);
+      const fontLoader = new FontLoader();
+      fontLoader.load(
+        // path to the font (included in three)
+        "node_modules/three/examples/fonts/droid/droid_serif_regular.typeface.json",
+        // called when the font has loaded
+        (droidFont) => {
+          const settings = {
+            size: 1,
+            height: 0.2,
+            font: droidFont,
+          };
+          geometry = new TextGeometry("T", settings);
+
+          // create an empty array to hold targets for the attribute we want to morph
+          // morphing positions and normals is supported
+          geometry.morphAttributes.position = [];
+
+          // the original positions of the cube's vertices
+          const positionAttribute = geometry.attributes.position;
+
+          // for the first morph target we'll move the cube's vertices onto the surface of a sphere
+          const spherePositions = [];
+
+          // for the second morph target, we'll twist the cubes vertices
+          // const twistPositions = [];
+          //const direction = new THREE.Vector3(1, 0, 0);
+          //const vertex = new THREE.Vector3();
+          //console.log(positionAttribute.count);
+          // console.log(positionAttribute["array"]);
+          let g = [];
+          for (let i = 0; i < positionAttribute.count; i++) {
+            let x = positionAttribute.getX(i); // - 0.7994570322334766 / 2;
+            let y = positionAttribute.getY(i); // - 0.9919999837875366 / 2;
+            let z = positionAttribute.getZ(i); // - 0.2000000029802322 / 2;
+            x -= 0.7994570322334766 / 2;
+            y -= 0.9919999837875366 / 2;
+            z -= 0.2000000029802322 / 2;
+            g.push(x, y, z);
+            spherePositions.push(
+              x *
+                Math.sqrt(1 - (y * y) / 2 - (z * z) / 2 + (y * y * z * z) / 3),
+              y *
+                Math.sqrt(1 - (z * z) / 2 - (x * x) / 2 + (z * z * x * x) / 3),
+              z * Math.sqrt(1 - (x * x) / 2 - (y * y) / 2 + (x * x * y * y) / 3)
+            );
+            if (i == 0) {
+              console.log([x, y, z]);
+              console.log(spherePositions[0]);
+            }
+          }
+
+          geometry.attributes.position = new THREE.Float32BufferAttribute(g, 3);
+          // add the spherical positions as the first morph target
+          geometry.morphAttributes.position[0] =
+            new THREE.Float32BufferAttribute(spherePositions, 3);
+
+          //return geometry;
+          resolve(geometry);
+        }
+      );
+    });
+    return promise;
+  };
   render = () => {
     // requestAnimationFrame(this.render);
     //this.renderer.render(toRaw(this.scene), this.camera);
