@@ -4,6 +4,8 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { toRaw } from "vue";
 //https://holomorphicguy.hashnode.dev/using-threejs-with-vue3-and-typescript
 import theCategories from "./categories.json";
+import theCategory from "./category_703.json";
+import colors from "./colors.json";
 import CameraControls from "camera-controls";
 import gsap from "gsap";
 import * as holdEvent from "hold-event";
@@ -39,6 +41,7 @@ export default class SceneBuilder {
   mesh;
   params;
   elevator;
+  floor;
   constructor(root: HTMLElement) {
     this.clock = new THREE.Clock();
     this.root = root;
@@ -64,9 +67,13 @@ export default class SceneBuilder {
       this.cameraControls,
       {
         azimuthAngle: 0,
+        distance: 20,
+        //polarAngle: 90,
       },
       {
-        azimuthAngle: 180 * THREE.MathUtils.DEG2RAD,
+        azimuthAngle: (180 - 45) * -THREE.MathUtils.DEG2RAD,
+        polarAngle: 70 * THREE.MathUtils.DEG2RAD,
+        distance: 60,
         duration: 10,
         paused: true,
       }
@@ -77,9 +84,9 @@ export default class SceneBuilder {
     keyW.addEventListener("holding", (event) => {
       this.cameraControls.forward(0.01 * event.deltaTime, false);
     });
-    keyS.addEventListener("holding", (event) =>
-      this.cameraControls.forward(-0.01 * event.deltaTime, false)
-    );
+    keyS.addEventListener("holding", (event) => {
+      this.cameraControls.forward(-0.01 * event.deltaTime, false);
+    });
     keyA.addEventListener("holding", (event) => {
       this.cameraControls.truck(-0.01 * event.deltaTime, 0, false);
     });
@@ -108,8 +115,9 @@ export default class SceneBuilder {
     });
 
     this.raycaster = new THREE.Raycaster();
-
-    //tween.play(0);
+    setTimeout((_) => {
+      tween.play(0);
+    }, 2000);
   }
 
   cameraSetup() {
@@ -120,7 +128,7 @@ export default class SceneBuilder {
       1000
     );
 
-    this.camera.position.set(35, 4, 35);
+    this.camera.position.set(35, 2, 35);
     this.camera.lookAt(0, 1, 0);
   }
 
@@ -145,8 +153,24 @@ export default class SceneBuilder {
     this.light = new THREE.AmbientLight(0xaaaaaa);
     this.scene.add(this.light);
 
+    // direction light
+    const color = 0xffffff;
+    const intensity = 1;
+    const directLight = new THREE.DirectionalLight(color, intensity);
+    directLight.position.set(0, 10, 0);
+    directLight.target.position.set(-5, 0, 0);
+    this.scene.add(directLight);
+    this.scene.add(directLight.target);
+
     // Create a GridHelper
-    let gridHelper2 = new THREE.GridHelper(60, 60, 0x555555, 0x555555, 10, 10);
+    let gridHelper2 = new THREE.GridHelper(
+      120,
+      120,
+      0x555555,
+      0x555555,
+      10,
+      10
+    );
 
     // Add objects to the grid
     for (let i = 0; i < 100; i++) {
@@ -160,8 +184,154 @@ export default class SceneBuilder {
     this.scene.add(gridHelper2);
     this.drawFloor(701);
     //this.drawFloor(259);
+    //this.drawElevator();
+    this.drowProducts(theCategory);
+  }
+  drowProducts(category) {
+    let count = category.filters.colors.length;
+
+    let colorsMap = [];
+    for (let index in colors) {
+      colorsMap[colors[index].id] = colors[index].base_id ?? colors[index].id;
+    }
+    //console.log(colorsMap[104]);
+    for (let index in category.filters.colors) {
+      let color = category.filters.colors[index];
+      //color.title
+      const group = new THREE.Group();
+
+      const groupsAngle = 180;
+      let width = 3;
+      let height = (width / 3) * 4;
+      const r = 40;
+      let countForAngel = count % 2 ? count : count - 1;
+      const angle =
+        index * (groupsAngle / countForAngel) * THREE.MathUtils.DEG2RAD;
+
+      let x = r * Math.cos(angle);
+      let y = 0.5 * r * Math.sin(angle);
+      group.position.set(x, height, y);
+
+      const fontLoader = new FontLoader();
+      fontLoader.load(
+        // path to the font (included in three)
+        "node_modules/three/examples/fonts/droid/droid_serif_regular.typeface.json",
+        // called when the font has loaded
+        (droidFont) => {
+          const settings = {
+            size: 2,
+            height: 0.05,
+            font: droidFont,
+          };
+
+          const textGeometry = new TextGeometry(color.title, settings);
+          //const textMaterial = new THREE.MeshNormalMaterial();
+          const textMaterial = new THREE.MeshBasicMaterial({
+            color: 0xb9b9b9,
+            vertexColors: THREE.FaceColors,
+          });
+
+          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+          //textMesh.geometry.x = 0.1;
+          textMesh.scale.set(0.3, 0.3, 0.3);
+          // Create a bounding box
+          var box = new THREE.Box3().setFromObject(textMesh);
+          // Get the size
+          var size = new THREE.Vector3();
+          box.getSize(size);
+          //console.log(size);
+
+          textMesh.position.x = size.x / -2;
+          textMesh.position.y = 5; //высота
+          textMesh.position.z = 0.5;
+
+          group.add(textMesh);
+        }
+      );
+      //console.log(color.id);
+      let ii = 0;
+      for (let i in category.items.products) {
+        //.slice(0, 4)
+        let product = category.items.products[i];
+
+        if (
+          !product.colors
+            .map((color) => parseInt(colorsMap[color.id]))
+            .includes(color.id)
+        ) {
+          continue;
+        }
+
+        // console.log(product);
+        let geometry = new THREE.BoxGeometry(width, height, 0.01); // ,в,
+        let front = product.media.filter((media) => media.type == "image")[0]
+          .media_url;
+        let loadManager = new THREE.LoadingManager();
+        const loader = new THREE.TextureLoader(loadManager);
+        let materials = [
+          null,
+          null,
+          null,
+          null,
+          new THREE.MeshBasicMaterial({
+            map: loader.load(front),
+          }),
+          // null,
+          new THREE.MeshBasicMaterial({
+            map: loader.load(front),
+          }),
+        ];
+
+        const cube = new THREE.Mesh(geometry, materials);
+        cube.position.y = 2.5;
+
+        if (ii % 2) {
+          cube.position.x = width * 1.5;
+          cube.position.z = (ii - 1) * -1.5;
+        } else {
+          cube.position.z = ii * -1.5;
+        }
+        cube.position.x -= width * 0.75;
+
+        group.add(cube);
+        ii++;
+      }
+      // console.log(angle * THREE.MathUtils.DEG2RAD);
+
+      let angleRotate = index * (groupsAngle / countForAngel);
+      //console.log(angleRotate);
+      let baseAngle = -90;
+      if (angleRotate > 90) {
+        angleRotate *= -1;
+        //baseAngle *= -1;
+        group.rotation.y = (baseAngle + angleRotate) * THREE.MathUtils.DEG2RAD;
+      } else {
+        group.rotation.y = (baseAngle - angleRotate) * THREE.MathUtils.DEG2RAD;
+      }
+      //group.rotation.y =
+      //(180 - index * (groupsAngle / count)) * THREE.MathUtils.DEG2RAD; //180
+
+      this.scene.add(group);
+    }
   }
   drawElevator() {
+    const loaderGltf = new GLTFLoader();
+    loaderGltf.load("/models/stairs1.glb", (gltf) => {
+      // https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7
+      this.elevator = new THREE.Group();
+      //console.log(gltf.scene.children[0].children[0].children[0]);
+      this.elevator.add(gltf.scene);
+      this.scene.add(this.elevator);
+      var box = new THREE.Box3().setFromObject(this.elevator);
+      var size = new THREE.Vector3();
+      box.getSize(size);
+
+      //this.elevator.position.x = size.x / 2;
+      //this.elevator.position.y = -1; //высота
+      //this.elevator.position.z = size.z / 2;
+    });
+  }
+  drawElevators() {
     const loaderGltf = new GLTFLoader();
     loaderGltf.load("/models/stairs__railings.glb", (gltf) => {
       // https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7
@@ -391,12 +561,13 @@ export default class SceneBuilder {
     //   vertexColors: THREE.FaceColors,
     // });
     //console.log(index);
-    const groupsAngle = 360;
+    const groupsAngle = 180; //360;
     let width = 3;
     let height = (width / 3) * 4;
     let geometry = new THREE.BoxGeometry(width, height, 0.01); // ,в,
-    const r = 30;
-    const angle = index * (groupsAngle / count) * THREE.MathUtils.DEG2RAD;
+    const r = 40; //30;
+    //const angle = index  * (groupsAngle / count) * THREE.MathUtils.DEG2RAD;
+    const angle = (index + 1) * (groupsAngle / count) * THREE.MathUtils.DEG2RAD;
     //console.log(angle);
 
     let x = r * Math.cos(angle);
@@ -437,8 +608,8 @@ export default class SceneBuilder {
       // called when the font has loaded
       (droidFont) => {
         const settings = {
-          size: 1,
-          height: 0.02,
+          size: 2,
+          height: 0.05,
           font: droidFont,
         };
 
@@ -467,24 +638,36 @@ export default class SceneBuilder {
       }
     );
 
-    let geometryS = new THREE.BoxGeometry(width, width * 4.5, 0.01); // ,в,
-    let material = new THREE.MeshBasicMaterial({
-      color: 0x185a7e,
-      vertexColors: THREE.FaceColors,
+    // let geometryS = new THREE.BoxGeometry(width, width * 4.5, 0.01); // ,в,
+    // let material = new THREE.MeshBasicMaterial({
+    //   color: 0x185a7e,
+    //   vertexColors: THREE.FaceColors,
+    // });
+    // const mesh = new THREE.Mesh(geometryS, material);
+    // mesh.rotation.x = -55 * THREE.MathUtils.DEG2RAD;
+    // mesh.position.y = 0; //  высота
+    // mesh.position.z = -5.5; //к центру круга
+    // group.add(mesh);
+
+    const loaderGltf = new GLTFLoader();
+    loaderGltf.load("/models/stairs1.glb", (gltf) => {
+      group.add(gltf.scene);
+      gltf.scene.position.y = -4.9; //  высота
+      gltf.scene.position.z = -4;
+      gltf.scene.scale.set(0.4, 0.4, 0.4);
+      gltf.scene.rotation.y = 180 * THREE.MathUtils.DEG2RAD;
     });
-    const mesh = new THREE.Mesh(geometryS, material);
-    mesh.rotation.x = -55 * THREE.MathUtils.DEG2RAD;
-    mesh.position.y = 0; //  высота
-    mesh.position.z = -5.5; //к центру круга
-    group.add(mesh);
-    this.scene.add(group);
+
+    this.floor.add(group);
   };
 
   drawFloor = (category) => {
+    this.floor = new THREE.Group();
+
     let level = this.getLevel(category, theCategories);
-    console.log(level);
+    //console.log(level);
     let index = 0;
-    const subs = level.subs; //.filter((item) => item.picture_bar); //.slice(0, 12);
+    const subs = level.subs.filter((item) => item.picture_bar); //.slice(0, 12);
     let pos = 0;
     Math.floor(subs.length / -2);
     for (let i in subs) {
@@ -498,6 +681,8 @@ export default class SceneBuilder {
       index++;
       pos++;
     }
+    this.floor.position.z = -45 - 10;
+    this.scene.add(this.floor);
   };
   getLevel = (categoryId, levels) => {
     for (let i in levels) {
