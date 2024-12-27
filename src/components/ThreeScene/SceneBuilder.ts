@@ -44,6 +44,7 @@ export default class SceneBuilder {
   elevator;
   floor;
   stats;
+  hero;
   constructor(root: HTMLElement) {
     this.stats = new Stats();
     this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -60,7 +61,7 @@ export default class SceneBuilder {
     this.cameraSetup();
 
     //this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-
+    this.hero = new THREE.Group();
     this.draw();
     this.root.appendChild(this.renderer.domElement);
 
@@ -80,7 +81,7 @@ export default class SceneBuilder {
         azimuthAngle: (180 - 45) * -THREE.MathUtils.DEG2RAD,
         polarAngle: 70 * THREE.MathUtils.DEG2RAD,
         distance: 60,
-        duration: 30,
+        duration: 10,
         paused: true,
       }
     );
@@ -101,16 +102,36 @@ export default class SceneBuilder {
     });
     ArrowUp.addEventListener("holding", (event) => {
       this.cameraControls.forward(0.005 * event.deltaTime, false);
+      // this.hero.position.z += 0.005 * event.deltaTime;
+      // this.hero.position.z = this.cameraControls.camera.position.z - 5;
+      // this.hero.position.x = this.cameraControls.camera.position.x - 1;
+      // this.hero.position.set(this.cameraControls.getTarget());
+      // console.log(this.cameraControls);
+      // console.log(this.cameraControls.getTarget());
+      this.hero.position.z = this.cameraControls.getTarget().z;
+      this.hero.position.x = this.cameraControls.getTarget().x;
+      this.hero.rotation.y = this.cameraControls.getSpherical().theta;
+      //console.log(this.cameraControls.getTarget());
     });
-    ArrowDown.addEventListener("holding", (event) =>
-      this.cameraControls.forward(-0.005 * event.deltaTime, false)
-    );
+    ArrowDown.addEventListener("holding", (event) => {
+      this.cameraControls.forward(-0.005 * event.deltaTime, false);
+      this.hero.position.z = this.cameraControls.getTarget().z;
+      this.hero.position.x = this.cameraControls.getTarget().x;
+      this.hero.rotation.y = this.cameraControls.getSpherical().theta;
+      // console.log(this.cameraControls);
+
+      // this.hero.position.z -= 0.005 * event.deltaTime;
+      // this.hero.position.z = this.cameraControls.camera.position.z - 5;
+      // this.hero.position.x = this.cameraControls.camera.position.x - 1;
+    });
     ArrowLeft.addEventListener("holding", (event) => {
       this.cameraControls.rotate(
         0.05 * THREE.MathUtils.DEG2RAD * event.deltaTime,
         0,
         true
       );
+      // console.log(this.cameraControls.getSpherical().theta);
+      this.hero.rotation.y = this.cameraControls.getSpherical().theta;
     });
     ArrowRight.addEventListener("holding", (event) => {
       this.cameraControls.rotate(
@@ -118,11 +139,16 @@ export default class SceneBuilder {
         0,
         true
       );
+      // console.log(this.cameraControls.getSpherical().theta);
+      this.hero.rotation.y = this.cameraControls.getSpherical().theta;
     });
 
     this.raycaster = new THREE.Raycaster();
     setTimeout((_) => {
       tween.play(0);
+      setTimeout((_) => {
+        this.cameraControls.distance = 2;
+      }, 11000);
     }, 2000);
   }
 
@@ -141,8 +167,10 @@ export default class SceneBuilder {
   draw() {
     const loaderGltf = new GLTFLoader();
     loaderGltf.load("/models/lucy_wyldstyle.glb", (gltf) => {
-      this.scene.add(gltf.scene);
-      gltf.scene.position.y = -1.3; //  высота
+      this.hero.add(gltf.scene);
+      this.hero.position.y = -1.3; //  высота
+      gltf.scene.rotation.y = THREE.MathUtils.DEG2RAD * 180;
+      this.scene.add(this.hero);
       // gltf.scene.position.z = -4;
       // gltf.scene.scale.set(0.4, 0.4, 0.4);
       // gltf.scene.rotation.y = 180 * THREE.MathUtils.DEG2RAD;
@@ -181,8 +209,8 @@ export default class SceneBuilder {
     let gridHelper2 = new THREE.GridHelper(
       120,
       120,
-      0x555555,
-      0x555555,
+      0xababab,
+      0xababab,
       10,
       10
     );
@@ -195,7 +223,14 @@ export default class SceneBuilder {
     //   );
     //   //gridHelper2.addObject(object);
     // }
-    gridHelper2.position.y = -1;
+    const object = new THREE.Mesh(
+      new THREE.BoxGeometry(120, 0.1, 120),
+      new THREE.MeshBasicMaterial({ color: 0xc7c5c5 })
+    );
+    object.position.y = -2;
+    this.scene.add(object);
+
+    gridHelper2.position.y = -1.26;
     this.scene.add(gridHelper2);
     this.drawFloor(701);
     //this.drawFloor(259);
@@ -209,10 +244,11 @@ export default class SceneBuilder {
     for (let index in colors) {
       colorsMap[colors[index].id] = colors[index].base_id ?? colors[index].id;
     }
-    //console.log(colorsMap[104]);
+
     for (let index in category.filters.colors) {
       let color = category.filters.colors[index];
       //color.title
+      // console.log("0x" + color.code.replace("#", ""));
       const group = new THREE.Group();
 
       const groupsAngle = 180;
@@ -243,6 +279,7 @@ export default class SceneBuilder {
           //const textMaterial = new THREE.MeshNormalMaterial();
           const textMaterial = new THREE.MeshBasicMaterial({
             color: 0xb9b9b9,
+            // color: "0x" + color.code.replace("#", ""),
             vertexColors: THREE.FaceColors,
           });
 
@@ -302,12 +339,12 @@ export default class SceneBuilder {
 
         if (ii % 2) {
           cube.position.x = width * 1.5;
-          cube.position.z = (ii - 1) * -1.5;
+          cube.position.z = (ii - 1) * -2;
         } else {
-          cube.position.z = ii * -1.5;
+          cube.position.z = ii * -2;
         }
         cube.position.x -= width * 0.75;
-
+        group.position.y = -1;
         group.add(cube);
         ii++;
       }
