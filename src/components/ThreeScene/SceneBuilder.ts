@@ -14,6 +14,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry";
 import GUI from "lil-gui";
+import Stats from "stats.js";
 //import Stats from "three/examples/jsm/libs/stats.module"; //https://sbcode.net/threejs/multi-controls-example/
 CameraControls.install({ THREE: THREE });
 
@@ -42,7 +43,12 @@ export default class SceneBuilder {
   params;
   elevator;
   floor;
+  stats;
   constructor(root: HTMLElement) {
+    this.stats = new Stats();
+    this.stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild(this.stats.dom);
+
     this.clock = new THREE.Clock();
     this.root = root;
     this.scene = new THREE.Scene();
@@ -67,14 +73,14 @@ export default class SceneBuilder {
       this.cameraControls,
       {
         azimuthAngle: 0,
-        distance: 20,
+        distance: 2,
         //polarAngle: 90,
       },
       {
         azimuthAngle: (180 - 45) * -THREE.MathUtils.DEG2RAD,
         polarAngle: 70 * THREE.MathUtils.DEG2RAD,
         distance: 60,
-        duration: 10,
+        duration: 30,
         paused: true,
       }
     );
@@ -133,12 +139,21 @@ export default class SceneBuilder {
   }
 
   draw() {
+    const loaderGltf = new GLTFLoader();
+    loaderGltf.load("/models/lucy_wyldstyle.glb", (gltf) => {
+      this.scene.add(gltf.scene);
+      gltf.scene.position.y = -1.3; //  высота
+      // gltf.scene.position.z = -4;
+      // gltf.scene.scale.set(0.4, 0.4, 0.4);
+      // gltf.scene.rotation.y = 180 * THREE.MathUtils.DEG2RAD;
+      this.cameraControls.forward(0.0001, false);
+    });
     // LINE
 
     this.material = new THREE.LineBasicMaterial({ color: 0xffffff });
 
     // GRID
-    const gridHelper = new THREE.GridHelper(500, 50);
+    //const gridHelper = new THREE.GridHelper(500, 50);
     //this.scene.add(gridHelper);
 
     //AXES
@@ -173,13 +188,13 @@ export default class SceneBuilder {
     );
 
     // Add objects to the grid
-    for (let i = 0; i < 100; i++) {
-      const object = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshBasicMaterial({ color: 0xff0000 })
-      );
-      //gridHelper2.addObject(object);
-    }
+    // for (let i = 0; i < 100; i++) {
+    //   const object = new THREE.Mesh(
+    //     new THREE.BoxGeometry(1, 1, 1),
+    //     new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    //   );
+    //   //gridHelper2.addObject(object);
+    // }
     gridHelper2.position.y = -1;
     this.scene.add(gridHelper2);
     this.drawFloor(701);
@@ -541,7 +556,11 @@ export default class SceneBuilder {
       //   true
       // );
       //console.log("hasControlsUpdated");
+
+      this.stats.begin();
+      // monitored code goes here
       this.renderer.render(toRaw(this.scene), this.camera);
+      this.stats.end();
       // const intersects = this.raycaster.intersectObjects(this.scene.children);
 
       // for (let i = 0; i < intersects.length; i++) {
@@ -663,7 +682,6 @@ export default class SceneBuilder {
 
   drawFloor = (category) => {
     this.floor = new THREE.Group();
-
     let level = this.getLevel(category, theCategories);
     //console.log(level);
     let index = 0;
